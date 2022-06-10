@@ -86,7 +86,29 @@ void test_hmac_sha256_cleanup(void *hmac_context, void *user_data)
 
 const EVP_CIPHER *aes_cipher(int cipher, size_t key_len)
 {
-    if(cipher == SG_CIPHER_AES_CBC_PKCS5) {
+    if(cipher == SG_CIPHER_AES_GCM_NOPADDING) {
+        if(key_len == 16) {
+            return EVP_aes_128_gcm();
+        }
+        else if(key_len == 24) {
+            return EVP_aes_192_gcm();
+        }
+        else if(key_len == 32) {
+            return EVP_aes_256_gcm();
+        }
+    }
+    else if(cipher == SG_CIPHER_AES_OFB_NOPADDING) {
+        if(key_len == 16) {
+            return EVP_aes_128_ofb();
+        }
+        else if(key_len == 24) {
+            return EVP_aes_192_ofb();
+        }
+        else if(key_len == 32) {
+            return EVP_aes_256_ofb();
+        }
+    }
+    else if(cipher == SG_CIPHER_AES_CBC_PKCS5) {
         if(key_len == 16) {
             return EVP_aes_128_cbc();
         }
@@ -108,7 +130,7 @@ const EVP_CIPHER *aes_cipher(int cipher, size_t key_len)
             return EVP_aes_256_ctr();
         }
     }
-    return 0;
+    return NULL;
 }
 
 int test_sha512_digest_init(void **digest_context, void *user_data)
@@ -211,6 +233,7 @@ int test_encrypt(signal_buffer **output,
         return SG_ERR_UNKNOWN;
     }
 
+    // Do we need to do anything special for ChaCha20-Poly1305?
     if(iv_len != 16) {
         fprintf(stderr, "invalid AES IV size: %zu\n", iv_len);
         return SG_ERR_UNKNOWN;
@@ -321,6 +344,7 @@ int test_decrypt(signal_buffer **output,
     }
 
 #if OPENSSL_VERSION_NUMBER >= 0x1010000fL
+    // Create and initialize the context
     ctx = EVP_CIPHER_CTX_new();
     if(!ctx) {
         result = SG_ERR_NOMEM;
@@ -335,6 +359,7 @@ int test_decrypt(signal_buffer **output,
     EVP_CIPHER_CTX_init(ctx);
 #endif
 
+    // Initialize the encryption operation.
     result = EVP_DecryptInit_ex(ctx, evp_cipher, 0, key, iv);
     if(!result) {
         fprintf(stderr, "cannot initialize cipher\n");
@@ -366,6 +391,11 @@ int test_decrypt(signal_buffer **output,
         result = SG_ERR_UNKNOWN;
         goto complete;
     }
+
+    // for(int i = 0; i < out_len; i++) {
+    //     fprintf(stderr, "%c", out_buf[i]);
+    // }
+    // fprintf(stderr, "\n");
 
     int final_len = 0;
     result = EVP_DecryptFinal_ex(ctx, out_buf + out_len, &final_len);

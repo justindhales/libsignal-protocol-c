@@ -14,7 +14,13 @@ extern "C" {
 #define KEY_EXCHANGE_SIMULTAENOUS_INITIATE_FLAG 0x04
 
 #define CIPHERTEXT_UNSUPPORTED_VERSION         1
-#define CIPHERTEXT_CURRENT_VERSION             3
+
+#define AES_CTR_VERSION                        2
+#define AES_CBC_VERSION                        3
+#define AES_OFB_VERSION                        4
+#define AES_GCM_VERSION                        5
+
+#define CIPHERTEXT_CURRENT_VERSION             AES_OFB_VERSION
 
 #define CIPHERTEXT_SIGNAL_TYPE                 2
 #define CIPHERTEXT_PREKEY_TYPE                 3

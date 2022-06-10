@@ -178,8 +178,8 @@ START_TEST(test_basic_simultaneous_initiate)
     ck_assert_int_eq(memcmp(message_for_bob_data, bob_plaintext_data, bob_plaintext_len), 0);
 
     /* Verify that the session versions are correct and the IDs are not equal */
-    ck_assert_int_eq(current_session_version(alice_store, &bob_address), 3);
-    ck_assert_int_eq(current_session_version(bob_store, &alice_address), 3);
+    ck_assert_int_eq(current_session_version(alice_store, &bob_address), CIPHERTEXT_CURRENT_VERSION);
+    ck_assert_int_eq(current_session_version(bob_store, &alice_address), CIPHERTEXT_CURRENT_VERSION);
     ck_assert_int_eq(is_session_id_equal(alice_store, bob_store), 0);
 
     /* Prepare Alice's response */
@@ -353,7 +353,7 @@ START_TEST(test_lost_simultaneous_initiate)
     ck_assert_int_eq(memcmp(message_for_bob_data, bob_plaintext_data, bob_plaintext_len), 0);
 
     /* Verify that the session version is correct */
-    ck_assert_int_eq(current_session_version(bob_store, &alice_address), 3);
+    ck_assert_int_eq(current_session_version(bob_store, &alice_address), CIPHERTEXT_CURRENT_VERSION);
 
     /* Prepare Alice's response */
     static const char alice_response_data[] = "second message";
@@ -538,8 +538,8 @@ START_TEST(test_simultaneous_initiate_lost_message)
     ck_assert_int_eq(memcmp(message_for_bob_data, bob_plaintext_data, bob_plaintext_len), 0);
 
     /* Verify that the session versions are correct and the IDs are not equal */
-    ck_assert_int_eq(current_session_version(alice_store, &bob_address), 3);
-    ck_assert_int_eq(current_session_version(bob_store, &alice_address), 3);
+    ck_assert_int_eq(current_session_version(alice_store, &bob_address), CIPHERTEXT_CURRENT_VERSION);
+    ck_assert_int_eq(current_session_version(bob_store, &alice_address), CIPHERTEXT_CURRENT_VERSION);
     ck_assert_int_eq(is_session_id_equal(alice_store, bob_store), 0);
 
     /* Prepare Alice's response */
@@ -720,8 +720,8 @@ START_TEST(test_simultaneous_initiate_repeated_messages)
     ck_assert_int_eq(memcmp(message_for_bob_data, bob_plaintext_data, bob_plaintext_len), 0);
 
     /* Verify that the session versions are correct and the IDs are not equal */
-    ck_assert_int_eq(current_session_version(alice_store, &bob_address), 3);
-    ck_assert_int_eq(current_session_version(bob_store, &alice_address), 3);
+    ck_assert_int_eq(current_session_version(alice_store, &bob_address), CIPHERTEXT_CURRENT_VERSION);
+    ck_assert_int_eq(current_session_version(bob_store, &alice_address), CIPHERTEXT_CURRENT_VERSION);
     ck_assert_int_eq(is_session_id_equal(alice_store, bob_store), 0);
 
     int i;
@@ -982,8 +982,8 @@ START_TEST(test_repeated_simultaneous_initiate_repeated_messages)
         ck_assert_int_eq(memcmp(message_for_bob_data, bob_plaintext_data, bob_plaintext_len), 0);
 
         /* Verify that the session versions are correct and the IDs are not equal */
-        ck_assert_int_eq(current_session_version(alice_store, &bob_address), 3);
-        ck_assert_int_eq(current_session_version(bob_store, &alice_address), 3);
+        ck_assert_int_eq(current_session_version(alice_store, &bob_address), CIPHERTEXT_CURRENT_VERSION);
+        ck_assert_int_eq(current_session_version(bob_store, &alice_address), CIPHERTEXT_CURRENT_VERSION);
         ck_assert_int_eq(is_session_id_equal(alice_store, bob_store), 0);
 
         /* Cleanup */
@@ -1263,8 +1263,8 @@ START_TEST(test_repeated_simultaneous_initiate_lost_message_repeated_messages)
         ck_assert_int_eq(memcmp(message_for_bob_data, bob_plaintext_data, bob_plaintext_len), 0);
 
         /* Verify that the session versions are correct and the IDs are not equal */
-        ck_assert_int_eq(current_session_version(alice_store, &bob_address), 3);
-        ck_assert_int_eq(current_session_version(bob_store, &alice_address), 3);
+        ck_assert_int_eq(current_session_version(alice_store, &bob_address), CIPHERTEXT_CURRENT_VERSION);
+        ck_assert_int_eq(current_session_version(bob_store, &alice_address), CIPHERTEXT_CURRENT_VERSION);
         ck_assert_int_eq(is_session_id_equal(alice_store, bob_store), 0);
 
         /* Cleanup */

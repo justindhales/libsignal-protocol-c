@@ -58,7 +58,7 @@ START_TEST(test_serialize_signal_message)
     signal_message *message = 0;
     signal_message *result_message = 0;
 
-    result = signal_message_create(&message, 3,
+    result = signal_message_create(&message, CIPHERTEXT_CURRENT_VERSION,
             mac_key, sizeof(mac_key),
             sender_ratchet_key,
             2, /* counter */
@@ -111,7 +111,7 @@ START_TEST(test_serialize_pre_key_signal_message)
     pre_key_signal_message *pre_key_message = 0;
     pre_key_signal_message *result_pre_key_message = 0;
 
-    result = signal_message_create(&message, 3,
+    result = signal_message_create(&message, CIPHERTEXT_CURRENT_VERSION,
             mac_key, sizeof(mac_key),
             sender_ratchet_key,
             2, /* counter */
@@ -123,7 +123,7 @@ START_TEST(test_serialize_pre_key_signal_message)
 
     uint32_t pre_key_id = 56;
     result = pre_key_signal_message_create(&pre_key_message,
-            3,  /* message version */
+            CIPHERTEXT_CURRENT_VERSION,  /* message version */
             42, /* registration ID */
             &pre_key_id, /* pre key ID */
             72, /* signed pre key ID */

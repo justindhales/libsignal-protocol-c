@@ -801,14 +801,28 @@ static int session_cipher_get_ciphertext(session_cipher *cipher,
     int result = 0;
     signal_buffer *output = 0;
 
-    if(version >= 3) {
+    if(version == AES_GCM_VERSION) {
+        result = signal_encrypt(cipher->global_context,
+                &output, SG_CIPHER_AES_GCM_NOPADDING,
+                message_keys->cipher_key, sizeof(message_keys->cipher_key),
+                message_keys->iv, sizeof(message_keys->iv),
+                plaintext, plaintext_len);
+    }
+    else if(version == AES_OFB_VERSION) {
+        result = signal_encrypt(cipher->global_context,
+                &output, SG_CIPHER_AES_OFB_NOPADDING,
+                message_keys->cipher_key, sizeof(message_keys->cipher_key),
+                message_keys->iv, sizeof(message_keys->iv),
+                plaintext, plaintext_len);
+    }
+    else if(version == AES_CBC_VERSION) {
         result = signal_encrypt(cipher->global_context,
                 &output, SG_CIPHER_AES_CBC_PKCS5,
                 message_keys->cipher_key, sizeof(message_keys->cipher_key),
                 message_keys->iv, sizeof(message_keys->iv),
                 plaintext, plaintext_len);
     }
-    else {
+    else if(version == AES_CTR_VERSION) {
         uint8_t iv[16];
         memset(iv, 0, sizeof(iv));
         iv[3] = (uint8_t)(message_keys->counter);
@@ -821,6 +835,9 @@ static int session_cipher_get_ciphertext(session_cipher *cipher,
                 message_keys->cipher_key, sizeof(message_keys->cipher_key),
                 iv, sizeof(iv),
                 plaintext, plaintext_len);
+    }
+    else {
+        result = SG_ERR_INVALID_VERSION;
     }
 
     if(result >= 0) {
@@ -838,14 +855,28 @@ static int session_cipher_get_plaintext(session_cipher *cipher,
     int result = 0;
     signal_buffer *output = 0;
 
-    if(version >= 3) {
+    if(version == AES_GCM_VERSION) {
+        result = signal_decrypt(cipher->global_context,
+                &output, SG_CIPHER_AES_GCM_NOPADDING,
+                message_keys->cipher_key, sizeof(message_keys->cipher_key),
+                message_keys->iv, sizeof(message_keys->iv),
+                ciphertext, ciphertext_len);
+    }
+    else if(version == AES_OFB_VERSION) {
+        result = signal_decrypt(cipher->global_context,
+                &output, SG_CIPHER_AES_OFB_NOPADDING,
+                message_keys->cipher_key, sizeof(message_keys->cipher_key),
+                message_keys->iv, sizeof(message_keys->iv),
+                ciphertext, ciphertext_len);
+    }
+    else if(version == AES_CBC_VERSION) {
         result = signal_decrypt(cipher->global_context,
                 &output, SG_CIPHER_AES_CBC_PKCS5,
                 message_keys->cipher_key, sizeof(message_keys->cipher_key),
                 message_keys->iv, sizeof(message_keys->iv),
                 ciphertext, ciphertext_len);
     }
-    else {
+    else if(version == AES_CTR_VERSION) {
         uint8_t iv[16];
         memset(iv, 0, sizeof(iv));
         iv[3] = (uint8_t)(message_keys->counter);
@@ -858,6 +889,9 @@ static int session_cipher_get_plaintext(session_cipher *cipher,
                 message_keys->cipher_key, sizeof(message_keys->cipher_key),
                 iv, sizeof(iv),
                 ciphertext, ciphertext_len);
+    }
+    else {
+        result = SG_ERR_INVALID_VERSION;
     }
 
     if(result >= 0) {

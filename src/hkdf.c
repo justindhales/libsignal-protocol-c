@@ -1,5 +1,7 @@
 #include "hkdf.h"
 
+#include "protocol.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,11 +35,11 @@ int hkdf_create(hkdf_context **context, int message_version, signal_context *glo
     SIGNAL_INIT(*context, hkdf_destroy);
     (*context)->global_context = global_context;
 
-    if(message_version == 2) {
-        (*context)->iteration_start_offset = 0;
-    }
-    else if(message_version == 3) {
+    if(message_version > AES_CTR_VERSION) {
         (*context)->iteration_start_offset = 1;
+    }
+    else if(message_version == AES_CTR_VERSION) {
+        (*context)->iteration_start_offset = 0;
     }
     else {
         free(*context);

@@ -200,14 +200,14 @@ START_TEST(test_basic_pre_key_v3)
     loaded_record_state = session_record_get_state(loaded_record);
     ck_assert_ptr_ne(loaded_record_state, 0);
 
-    ck_assert_int_eq(session_state_get_session_version(loaded_record_state), 3);
+    ck_assert_int_eq(session_state_get_session_version(loaded_record_state), CIPHERTEXT_CURRENT_VERSION);
 
     SIGNAL_UNREF(loaded_record);
     loaded_record = 0;
     loaded_record_state = 0;
 
     /* Encrypt an outgoing message to send to Bob */
-    static const char original_message[] = "L'homme est condamné à être libre";
+    static const char original_message[] = "L'homme est condamnï¿½ ï¿½ ï¿½tre libre";
     size_t original_message_len = sizeof(original_message) - 1;
     session_cipher *alice_session_cipher = 0;
     result = session_cipher_create(&alice_session_cipher, alice_store, &bob_address, global_context);
@@ -278,7 +278,7 @@ START_TEST(test_basic_pre_key_v3)
     signal_protocol_session_load_session(bob_store, &alice_recipient_session_record, &alice_address);
 
     session_state *alice_recipient_session_state = session_record_get_state(alice_recipient_session_record);
-    ck_assert_int_eq(session_state_get_session_version(alice_recipient_session_state), 3);
+    ck_assert_int_eq(session_state_get_session_version(alice_recipient_session_state), CIPHERTEXT_CURRENT_VERSION);
     ck_assert_ptr_ne(session_state_get_alice_base_key(alice_recipient_session_state), 0);
 
     uint8_t *plaintext_data = signal_buffer_data(plaintext);
@@ -798,7 +798,7 @@ START_TEST(test_repeat_bundle_message_v3)
     ck_assert_int_eq(result, 0);
 
     /* Initialize Alice's session cipher */
-    static const char original_message[] = "L'homme est condamné à être libre";
+    static const char original_message[] = "L'homme est condamnï¿½ ï¿½ ï¿½tre libre";
     size_t original_message_len = sizeof(original_message) - 1;
     session_cipher *alice_session_cipher = 0;
     result = session_cipher_create(&alice_session_cipher, alice_store, &bob_address, global_context);
@@ -1003,7 +1003,7 @@ START_TEST(test_bad_message_bundle)
     ck_assert_int_eq(result, 0);
 
     /* Encrypt an outgoing message to send to Bob */
-    static const char original_message[] = "L'homme est condamné à être libre";
+    static const char original_message[] = "L'homme est condamnï¿½ ï¿½ ï¿½tre libre";
     size_t original_message_len = sizeof(original_message) - 1;
     session_cipher *alice_session_cipher = 0;
     result = session_cipher_create(&alice_session_cipher, alice_store, &bob_address, global_context);
@@ -1154,10 +1154,10 @@ START_TEST(test_optional_one_time_pre_key)
     session_state *state = 0;
     state = session_record_get_state(record);
 
-    ck_assert_int_eq(session_state_get_session_version(state), 3);
+    ck_assert_int_eq(session_state_get_session_version(state), CIPHERTEXT_CURRENT_VERSION);
     SIGNAL_UNREF(record);
 
-    static const char original_message[] = "L'homme est condamné à être libre";
+    static const char original_message[] = "L'homme est condamnï¿½ ï¿½ ï¿½tre libre";
     size_t original_message_len = sizeof(original_message) - 1;
 
     /* Create Alice's session cipher */
@@ -1217,7 +1217,7 @@ START_TEST(test_optional_one_time_pre_key)
 
     state = session_record_get_state(record);
 
-    ck_assert_int_eq(session_state_get_session_version(state), 3);
+    ck_assert_int_eq(session_state_get_session_version(state), CIPHERTEXT_CURRENT_VERSION);
     ck_assert_ptr_ne(session_state_get_alice_base_key(state), 0);
 
     uint8_t *plaintext_data = signal_buffer_data(plaintext);
