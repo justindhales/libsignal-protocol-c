@@ -110,7 +110,8 @@ int group_cipher_encrypt(group_cipher *cipher,
     sender_cipher_key = sender_message_key_get_cipher_key(sender_key);
     sender_cipher_iv = sender_message_key_get_iv(sender_key);
 
-    result = signal_encrypt(cipher->global_context, &ciphertext, SG_CIPHER_AES_CBC_PKCS5,
+    // I don't know how GCM works with a group cipher
+    result = signal_encrypt(cipher->global_context, &ciphertext, SG_CIPHER_AES_GCM,
             signal_buffer_data(sender_cipher_key), signal_buffer_len(sender_cipher_key),
             signal_buffer_data(sender_cipher_iv), signal_buffer_len(sender_cipher_iv),
             padded_plaintext, padded_plaintext_len);
@@ -209,7 +210,7 @@ int group_cipher_decrypt(group_cipher *cipher,
     sender_cipher_iv = sender_message_key_get_iv(sender_key);
     ciphertext_body = sender_key_message_get_ciphertext(ciphertext);
 
-    result = signal_decrypt(cipher->global_context, &result_buf, SG_CIPHER_AES_CBC_PKCS5,
+    result = signal_decrypt(cipher->global_context, &result_buf, SG_CIPHER_AES_GCM,
             signal_buffer_data(sender_cipher_key), signal_buffer_len(sender_cipher_key),
             signal_buffer_data(sender_cipher_iv), signal_buffer_len(sender_cipher_iv),
             signal_buffer_data(ciphertext_body), signal_buffer_len(ciphertext_body));

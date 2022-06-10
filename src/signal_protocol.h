@@ -57,6 +57,7 @@ extern "C" {
 /* Mode settings for the crypto callbacks */
 #define SG_CIPHER_AES_CTR_NOPADDING 1
 #define SG_CIPHER_AES_CBC_PKCS5     2
+#define SG_CIPHER_AES_GCM           3
 
 void signal_type_ref(signal_type_base *instance);
 void signal_type_unref(signal_type_base *instance);

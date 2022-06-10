@@ -801,7 +801,14 @@ static int session_cipher_get_ciphertext(session_cipher *cipher,
     int result = 0;
     signal_buffer *output = 0;
 
-    if(version >= 3) {
+    if(version >= 4) {
+        result = signal_encrypt(cipher->global_context,
+                &output, SG_CIPHER_AES_GCM,
+                message_keys->cipher_key, sizeof(message_keys->cipher_key),
+                message_keys->iv, sizeof(message_keys->iv),
+                plaintext, plaintext_len);
+    }
+    else if(version == 3) {
         result = signal_encrypt(cipher->global_context,
                 &output, SG_CIPHER_AES_CBC_PKCS5,
                 message_keys->cipher_key, sizeof(message_keys->cipher_key),
@@ -838,7 +845,14 @@ static int session_cipher_get_plaintext(session_cipher *cipher,
     int result = 0;
     signal_buffer *output = 0;
 
-    if(version >= 3) {
+    if(version >= 4) {
+        result = signal_decrypt(cipher->global_context,
+                &output, SG_CIPHER_AES_GCM,
+                message_keys->cipher_key, sizeof(message_keys->cipher_key),
+                message_keys->iv, sizeof(message_keys->iv),
+                ciphertext, ciphertext_len);
+    }
+    else if(version == 3) {
         result = signal_decrypt(cipher->global_context,
                 &output, SG_CIPHER_AES_CBC_PKCS5,
                 message_keys->cipher_key, sizeof(message_keys->cipher_key),

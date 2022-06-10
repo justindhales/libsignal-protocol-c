@@ -14,7 +14,8 @@ extern "C" {
 #define KEY_EXCHANGE_SIMULTAENOUS_INITIATE_FLAG 0x04
 
 #define CIPHERTEXT_UNSUPPORTED_VERSION         1
-#define CIPHERTEXT_CURRENT_VERSION             3
+// Change to 4 to use GCM?
+#define CIPHERTEXT_CURRENT_VERSION             4
 
 #define CIPHERTEXT_SIGNAL_TYPE                 2
 #define CIPHERTEXT_PREKEY_TYPE                 3

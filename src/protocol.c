@@ -132,6 +132,8 @@ int signal_message_create(signal_message **message, uint8_t message_version,
         goto complete;
     }
 
+    fprintf(stderr, "---MAC Section--\n\n");
+
     result = signal_message_get_mac(&mac_buf,
             message_version, sender_identity_key, receiver_identity_key,
             mac_key, mac_key_len,
@@ -146,6 +148,16 @@ int signal_message_create(signal_message **message, uint8_t message_version,
             message_buf,
             signal_buffer_data(mac_buf),
             signal_buffer_len(mac_buf));
+
+    uint8_t* mac_bytes = signal_buffer_data(mac_buf);
+    size_t mac_len = signal_buffer_len(mac_buf);
+
+    fprintf(stderr, "Message MAC:\n");
+    for(size_t i = 0; i < mac_len; i++) {
+        fprintf(stderr, "%02x ", mac_bytes[i]);
+    }
+    fprintf(stderr, "\n");
+
     if(result_message->base_message.serialized) {
         message_buf = 0;
     }
@@ -209,6 +221,47 @@ static int signal_message_serialize(signal_buffer **buffer, const signal_message
 
     data = signal_buffer_data(result_buf);
     data[0] = version;
+    fprintf(stderr, "---Signal Version Numbers Section---\n");
+    fprintf(stderr, "Message version (first nibble of first byte):\n0x%02x\n\n", data[0] >> 4);
+    fprintf(stderr, "Ciphertext current version (second nibble of first byte):\n0x%02x\n\n", data[0] & 0x0F);
+
+    fprintf(stderr, "---Protobuf Section---\n\n");
+
+    fprintf(stderr, "Ratchet key key:\n0x%02x\n", 0x1 << 3 | 0x2);
+    fprintf(stderr, "\tDerivation: 0x1 << 3 | 0x2\n");
+    fprintf(stderr, "\tfield_number = 0x1, wire_type = 0x2 (for length-delimited types)\n\n");
+
+    fprintf(stderr, "Ratchet key length (serialized as a var-int):\n0x%lx\n\n", message_structure.ratchetkey.len);
+
+    fprintf(stderr, "Ratchet key:\n");
+    for(size_t i = 0; i < message_structure.ratchetkey.len; i++) {
+        fprintf(stderr, "%02x ", message_structure.ratchetkey.data[i]);
+    }
+    fprintf(stderr, "\n\n");
+
+    fprintf(stderr, "Counter key:\n0x%02x\n", 0x2 << 3 | 0x0);
+    fprintf(stderr, "\tDerivation: 0x2 << 3 | 0x0\n");
+    fprintf(stderr, "\tfield_number = 0x2, wire_type = 0x0 (for var-int types)\n\n");
+
+    fprintf(stderr, "Counter (serialized as a var-int):\n0x%02x\n", message_structure.counter);
+
+    fprintf(stderr, "Previous counter key:\n0x%02x\n", 0x3 << 3 | 0x0);
+    fprintf(stderr, "\tDerivation: 0x3 << 3 | 0x0\n");
+    fprintf(stderr, "\tfield_number = 0x3, wire_type = 0x0 (for var-int types)\n\n");
+
+    fprintf(stderr, "Previous counter (serialized as a var-int):\n0x%02x\n", message_structure.previouscounter);
+
+    fprintf(stderr, "Ciphertext key:\n0x%02x\n", 0x4 << 3 | 0x2);
+    fprintf(stderr, "\tDerivation: 0x4 << 3 | 0x2\n");
+    fprintf(stderr, "\tfield_number = 0x4, wire_type = 0x2 (for length-delimited types)\n\n");
+
+    fprintf(stderr, "Ciphertext length (serialized as a var-int):\n0x%02lx\n\n", message_structure.ciphertext.len);
+
+    fprintf(stderr, "Ciphertext:\n");
+    for(size_t i = 0; i < message_structure.ciphertext.len; i++) {
+        fprintf(stderr, "%02x ", message_structure.ciphertext.data[i]);
+    }
+    fprintf(stderr, "\n\n");
 
     result_size = textsecure__signal_message__pack(&message_structure, data + 1);
     if(result_size != len) {

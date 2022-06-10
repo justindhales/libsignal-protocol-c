@@ -86,6 +86,17 @@ void test_hmac_sha256_cleanup(void *hmac_context, void *user_data)
 
 const EVP_CIPHER *aes_cipher(int cipher, size_t key_len)
 {
+    if(cipher == SG_CIPHER_AES_GCM) {
+        if(key_len == 16) {
+            return EVP_aes_128_gcm();
+        }
+        else if(key_len == 24) {
+            return EVP_aes_192_gcm();
+        }
+        else if(key_len == 32) {
+            return EVP_aes_256_ofb();
+        }
+    }
     if(cipher == SG_CIPHER_AES_CBC_PKCS5) {
         if(key_len == 16) {
             return EVP_aes_128_cbc();

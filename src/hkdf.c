@@ -36,7 +36,7 @@ int hkdf_create(hkdf_context **context, int message_version, signal_context *glo
     if(message_version == 2) {
         (*context)->iteration_start_offset = 0;
     }
-    else if(message_version == 3) {
+    else if(message_version == 3 || message_version == 4) {
         (*context)->iteration_start_offset = 1;
     }
     else {
