@@ -100,7 +100,7 @@ int session_cipher_stream_encrypt(session_cipher* cipher, void** cipher_ctx, sig
     session_record *record = 0;
     session_state *state = 0;
     ratchet_chain_key *chain_key = 0;
-    ratchet_chain_key *next_chain_key = 0;
+    // ratchet_chain_key *next_chain_key = 0;
     ratchet_message_keys message_keys;
     // ec_public_key *sender_ephemeral = 0;
     // uint32_t previous_counter = 0;
@@ -149,7 +149,7 @@ int session_cipher_stream_encrypt(session_cipher* cipher, void** cipher_ctx, sig
 
         // This portion might be better placed in a separate function to allow for flexibility
         result = signal_stream_encrypt_init(cipher->global_context,
-                cipher_ctx, session_version,
+                cipher_ctx, (int)session_version,
                 message_keys.cipher_key, sizeof(message_keys.cipher_key),
                 message_keys.iv, sizeof(message_keys.iv));
         if (result < 0) {
@@ -232,7 +232,7 @@ int session_cipher_stream_encrypt_final(session_cipher* cipher, void** cipher_ct
     if (*cipher_ctx == NULL) {
         // This portion might be better placed in separate function to allow for flexibility
         result = signal_stream_encrypt_init(cipher->global_context,
-                cipher_ctx, session_version,
+                cipher_ctx, (int)session_version,
                 message_keys.cipher_key, sizeof(message_keys.cipher_key),
                 message_keys.iv, sizeof(message_keys.iv));
         if (result < 0) {
@@ -241,7 +241,7 @@ int session_cipher_stream_encrypt_final(session_cipher* cipher, void** cipher_ct
     }
 
     // Apply the encryption
-    result = signal_stream_encrypt(cipher->global_context, one_time_pad, *cipher_ctx, plaintext, plaintext_len, ciphertext);
+    result = signal_stream_encrypt(cipher->global_context, one_time_pad, *cipher_ctx, plaintext, plaintext_len, &ciphertext);
     if (result < 0) {
         goto complete;
     }
@@ -281,7 +281,36 @@ int session_cipher_stream_encrypt_final(session_cipher* cipher, void** cipher_ct
         goto complete;
     }
 
-    // I am completely ignoring everything about unacknowledged pre-key messages
+    if(session_state_has_unacknowledged_pre_key_message(state) == 1) {
+        uint32_t local_registration_id = session_state_get_local_registration_id(state);
+        int has_pre_key_id = 0;
+        uint32_t pre_key_id = 0;
+        uint32_t signed_pre_key_id;
+        ec_public_key *base_key;
+        
+        if(session_state_unacknowledged_pre_key_message_has_pre_key_id(state)) {
+            has_pre_key_id = 1;
+            pre_key_id = session_state_unacknowledged_pre_key_message_get_pre_key_id(state);
+        }
+        signed_pre_key_id = session_state_unacknowledged_pre_key_message_get_signed_pre_key_id(state);
+        base_key = session_state_unacknowledged_pre_key_message_get_base_key(state);
+
+        if(!base_key) {
+            result = SG_ERR_UNKNOWN;
+            goto complete;
+        }
+
+        result = pre_key_signal_message_create(&pre_key_message,
+                session_version, local_registration_id, (has_pre_key_id ? &pre_key_id : 0),
+                signed_pre_key_id, base_key, local_identity_key,
+                message,
+                cipher->global_context);
+        if(result < 0) {
+            goto complete;
+        }
+        SIGNAL_UNREF(message);
+        message = 0;
+    }
 
     result = ratchet_chain_key_create_next(chain_key, &next_chain_key);
     if(result < 0) {
