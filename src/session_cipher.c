@@ -34,6 +34,7 @@ static int session_cipher_get_or_create_message_keys(ratchet_message_keys *messa
         ratchet_chain_key *chain_key, uint32_t counter,
         signal_context *global_context);
 
+static int session_cipher_get_cipher_constant(uint32_t version);
 static int session_cipher_get_ciphertext(session_cipher *cipher,
         signal_buffer **ciphertext,
         uint32_t version, ratchet_message_keys *message_keys,
@@ -95,7 +96,9 @@ void session_cipher_set_decryption_callback(session_cipher *cipher,
     cipher->decrypt_callback = callback;
 }
 
-int session_cipher_stream_encrypt(session_cipher* cipher, void** cipher_ctx, signal_buffer** one_time_pad, const uint8_t* plaintext, size_t plaintext_len, signal_buffer** ciphertext) {
+int session_cipher_stream_encrypt(session_cipher* cipher,
+        void** cipher_ctx, signal_buffer** one_time_pad,
+        const uint8_t* plaintext, size_t plaintext_len, signal_buffer** ciphertext) {
     int result;
     session_record *record = 0;
     session_state *state = 0;
@@ -104,7 +107,8 @@ int session_cipher_stream_encrypt(session_cipher* cipher, void** cipher_ctx, sig
     ratchet_message_keys message_keys;
     // ec_public_key *sender_ephemeral = 0;
     // uint32_t previous_counter = 0;
-    uint32_t session_version = 0;
+    // uint32_t session_version = 0;
+    int cipher_version = 0;
     // signal_buffer *ciphertext = 0;
     // uint32_t chain_key_index = 0;
     // ec_public_key *local_identity_key = 0;
@@ -147,9 +151,11 @@ int session_cipher_stream_encrypt(session_cipher* cipher, void** cipher_ctx, sig
             goto complete;
         }
 
+        cipher_version = session_cipher_get_cipher_constant(session_state_get_session_version(state));
+
         // This portion might be better placed in a separate function to allow for flexibility
         result = signal_stream_encrypt_init(cipher->global_context,
-                cipher_ctx, (int)session_version,
+                cipher_ctx, cipher_version,
                 message_keys.cipher_key, sizeof(message_keys.cipher_key),
                 message_keys.iv, sizeof(message_keys.iv));
         if (result < 0) {
@@ -170,7 +176,9 @@ complete:
     return result;
 }
 
-int session_cipher_stream_encrypt_final(session_cipher* cipher, void** cipher_ctx, signal_buffer** one_time_pad, const uint8_t* plaintext, size_t plaintext_len, ciphertext_message** encrypted_message) {
+int session_cipher_stream_encrypt_final(session_cipher* cipher,
+        void** cipher_ctx, signal_buffer** one_time_pad,
+        const uint8_t* plaintext, size_t plaintext_len, ciphertext_message** encrypted_message) {
     int result;
     session_record *record = 0;
     session_state *state = 0;
@@ -180,6 +188,7 @@ int session_cipher_stream_encrypt_final(session_cipher* cipher, void** cipher_ct
     ec_public_key *sender_ephemeral = 0;
     uint32_t previous_counter = 0;
     uint32_t session_version = 0;
+    int cipher_version = 0;
     signal_buffer *ciphertext = 0;
     uint32_t chain_key_index = 0;
     ec_public_key *local_identity_key = 0;
@@ -227,12 +236,13 @@ int session_cipher_stream_encrypt_final(session_cipher* cipher, void** cipher_ct
 
     previous_counter = session_state_get_previous_counter(state);
     session_version = session_state_get_session_version(state);
+    cipher_version = session_cipher_get_cipher_constant(session_version);
 
     // Create the cipher context if necessary
     if (*cipher_ctx == NULL) {
         // This portion might be better placed in separate function to allow for flexibility
         result = signal_stream_encrypt_init(cipher->global_context,
-                cipher_ctx, (int)session_version,
+                cipher_ctx, cipher_version,
                 message_keys.cipher_key, sizeof(message_keys.cipher_key),
                 message_keys.iv, sizeof(message_keys.iv));
         if (result < 0) {
@@ -247,7 +257,7 @@ int session_cipher_stream_encrypt_final(session_cipher* cipher, void** cipher_ct
     }
 
     // Finalize this encryption session
-    result = signal_stream_encrypt_final(cipher->global_context, *cipher_ctx);
+    result = signal_stream_encrypt_final(cipher->global_context, one_time_pad, *cipher_ctx);
     if (result < 0) {
         goto complete;
     }
@@ -1041,6 +1051,25 @@ complete:
     }
     signal_unlock(cipher->global_context);
     return result;
+}
+
+static int session_cipher_get_cipher_constant(uint32_t version) {
+    switch (version) {
+        case AES_GCM_VERSION:
+            return SG_CIPHER_AES_GCM_NOPADDING;
+
+        case AES_OFB_VERSION:
+            return SG_CIPHER_AES_OFB_NOPADDING;
+
+        case AES_CBC_VERSION:
+            return SG_CIPHER_AES_CBC_PKCS5;
+
+        case AES_CTR_VERSION:
+            return SG_CIPHER_AES_CTR_NOPADDING;
+    
+        default:
+            return SG_CIPHER_INVALID;
+    }
 }
 
 static int session_cipher_get_ciphertext(session_cipher *cipher,

@@ -574,12 +574,14 @@ int signal_stream_encrypt(signal_context* context,
 }
 
 int signal_stream_encrypt_final(signal_context* context,
+        signal_buffer** one_time_pad,
         void* cipher_ctx)
 {
     assert(context);
     assert(context->crypto_provider.stream_encrypt_final_func);
     return context->crypto_provider.stream_encrypt_final_func(
-            cipher_ctx, context->crypto_provider.user_data);
+            one_time_pad, cipher_ctx,
+            context->crypto_provider.user_data);
 }
 
 void signal_lock(signal_context *context)

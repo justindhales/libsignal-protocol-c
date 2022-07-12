@@ -68,6 +68,7 @@ int signal_stream_encrypt(signal_context* context,
         signal_buffer** ciphertext);
 
 int signal_stream_encrypt_final(signal_context* context,
+        signal_buffer** one_time_pad,
         void* cipher_ctx);
 
 void signal_lock(signal_context *context);

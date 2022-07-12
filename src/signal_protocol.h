@@ -58,6 +58,7 @@ extern "C" {
 #define SG_CIPHER_AES_CTR_NOPADDING 1
 #define SG_CIPHER_AES_CBC_PKCS5     2
 /* Modes I added */
+#define SG_CIPHER_INVALID 0
 #define SG_CIPHER_AES_OFB_NOPADDING 3
 #define SG_CIPHER_AES_GCM_NOPADDING 4
 
@@ -422,7 +423,9 @@ typedef struct signal_crypto_provider {
             signal_buffer** ciphertext,
             void *user_data);
 
-    int (*stream_encrypt_final_func)(void* cipher_ctx, void* user_data);
+    int (*stream_encrypt_final_func)(signal_buffer** one_time_pad,
+            void* cipher_ctx,
+            void* user_data);
 
     /** User data pointer */
     void *user_data;

@@ -73,6 +73,14 @@ void *session_cipher_get_user_data(session_cipher *cipher);
 void session_cipher_set_decryption_callback(session_cipher *cipher,
         int (*callback)(session_cipher *cipher, signal_buffer *plaintext, void *decrypt_context));
 
+int session_cipher_stream_encrypt(session_cipher* cipher,
+        void** cipher_ctx, signal_buffer** one_time_pad,
+        const uint8_t* plaintext, size_t plaintext_len, signal_buffer** ciphertext);
+
+int session_cipher_stream_encrypt_final(session_cipher* cipher,
+        void** cipher_ctx, signal_buffer** one_time_pad,
+        const uint8_t* plaintext, size_t plaintext_len, ciphertext_message** encrypted_message);
+
 /**
  * Encrypt a message.
  *
