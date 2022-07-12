@@ -547,6 +547,41 @@ int signal_decrypt(signal_context *context,
             context->crypto_provider.user_data);
 }
 
+int signal_stream_encrypt_init(signal_context* context,
+        void **cipher_ctx,
+        int cipher,
+        const uint8_t *key, size_t key_len,
+        const uint8_t *iv, size_t iv_len)
+{
+    assert(context);
+    assert(context->crypto_provider.stream_encrypt_init_func);
+    return context->crypto_provider.stream_encrypt_init_func(
+            cipher_ctx, cipher, key, key_len, iv, iv_len,
+            context->crypto_provider.user_data);
+}
+
+int signal_stream_encrypt(signal_context* context,
+        signal_buffer** one_time_pad,
+        void* cipher_ctx,
+        const uint8_t* plaintext, size_t plaintext_len,
+        signal_buffer** ciphertext)
+{
+    assert(context);
+    assert(context->crypto_provider.stream_encrypt_func);
+    return context->crypto_provider.stream_encrypt_func(
+            one_time_pad, cipher_ctx, plaintext, plaintext_len, ciphertext,
+            context->crypto_provider.user_data);
+}
+
+int signal_stream_encrypt_final(signal_context* context,
+        void* cipher_ctx)
+{
+    assert(context);
+    assert(context->crypto_provider.stream_encrypt_final_func);
+    return context->crypto_provider.stream_encrypt_final_func(
+            cipher_ctx, context->crypto_provider.user_data);
+}
+
 void signal_lock(signal_context *context)
 {
     if(context->lock) {

@@ -410,18 +410,19 @@ typedef struct signal_crypto_provider {
             const uint8_t *ciphertext, size_t ciphertext_len,
             void *user_data);
 
-    int (*stream_pad_init)(void **ctx,
+    int (*stream_encrypt_init_func)(void **cipher_ctx,
             int cipher,
             const uint8_t *key, size_t key_len,
             const uint8_t *iv, size_t iv_len,
             void *user_data);
 
-    int (*stream_pad_update)(signal_buffer **one_time_pad,
-            void *ctx,
-            size_t num_blocks,
+    int (*stream_encrypt_func)(signal_buffer **one_time_pad,
+            void *cipher_ctx,
+            const uint8_t* plaintext, size_t plaintext_len,
+            signal_buffer** ciphertext,
             void *user_data);
 
-    int (*stream_pad_final)(void* ctx);
+    int (*stream_encrypt_final_func)(void* cipher_ctx, void* user_data);
 
     /** User data pointer */
     void *user_data;

@@ -55,6 +55,21 @@ int signal_decrypt(signal_context *context,
         const uint8_t *iv, size_t iv_len,
         const uint8_t *ciphertext, size_t ciphertext_len);
 
+int signal_stream_encrypt_init(signal_context* context,
+        void **cipher_ctx,
+        int cipher,
+        const uint8_t *key, size_t key_len,
+        const uint8_t *iv, size_t iv_len);
+
+int signal_stream_encrypt(signal_context* context,
+        signal_buffer** one_time_pad,
+        void* cipher_ctx,
+        const uint8_t* plaintext, size_t plaintext_len,
+        signal_buffer** ciphertext);
+
+int signal_stream_encrypt_final(signal_context* context,
+        void* cipher_ctx);
+
 void signal_lock(signal_context *context);
 void signal_unlock(signal_context *context);
 void signal_log(signal_context *context, int level, const char *format, ...);
