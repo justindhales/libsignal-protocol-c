@@ -96,29 +96,62 @@ void session_cipher_set_decryption_callback(session_cipher *cipher,
     cipher->decrypt_callback = callback;
 }
 
-int session_cipher_stream_encrypt(session_cipher* cipher,
-        void** cipher_ctx, signal_buffer** one_time_pad,
-        const uint8_t* plaintext, size_t plaintext_len, signal_buffer** ciphertext) {
-    int result;
-    session_record *record = 0;
-    session_state *state = 0;
-    ratchet_chain_key *chain_key = 0;
-    // ratchet_chain_key *next_chain_key = 0;
-    ratchet_message_keys message_keys;
-    // ec_public_key *sender_ephemeral = 0;
-    // uint32_t previous_counter = 0;
-    // uint32_t session_version = 0;
-    int cipher_version = 0;
-    // signal_buffer *ciphertext = 0;
-    // uint32_t chain_key_index = 0;
-    // ec_public_key *local_identity_key = 0;
-    // ec_public_key *remote_identity_key = 0;
-    // signal_message *message = 0;
-    // pre_key_signal_message *pre_key_message = 0;
-    // uint8_t *ciphertext_data = 0;
-    // size_t ciphertext_len = 0;
-
+int session_cipher_stream_encrypt_init(session_cipher *cipher, void **cipher_ctx) {
     assert(cipher);
+    assert(cipher_ctx);
+    assert(*cipher_ctx == NULL);
+
+    signal_lock(cipher->global_context);
+
+    session_record *record;
+    int result = signal_protocol_session_load_session(cipher->store, &record, cipher->remote_address);
+    if (result < 0) {
+        goto complete;
+    }
+
+    session_state *state = session_record_get_state(record);
+    if (!state) {
+        result = SG_ERR_UNKNOWN;
+        goto complete;
+    }
+
+    ratchet_chain_key *chain_key = session_state_get_sender_chain_key(state);
+    if(!chain_key) {
+        result = SG_ERR_UNKNOWN;
+        goto complete;
+    }
+
+    ratchet_message_keys message_keys;
+    result = ratchet_chain_key_get_message_keys(chain_key, &message_keys);
+    if(result < 0) {
+        goto complete;
+    }
+
+    int cipher_version = session_cipher_get_cipher_constant(session_state_get_session_version(state));
+
+    // This portion might be better placed in a separate function to allow for flexibility
+    result = signal_stream_encrypt_init(cipher->global_context,
+            cipher_ctx, cipher_version,
+            message_keys.cipher_key, sizeof(message_keys.cipher_key),
+            message_keys.iv, sizeof(message_keys.iv));
+
+complete:
+    signal_unlock(cipher->global_context);
+
+    return result;
+}
+
+int session_cipher_stream_encrypt(session_cipher* cipher,
+        void* cipher_ctx, signal_buffer** one_time_pad,
+        const uint8_t* plaintext, size_t plaintext_len, ciphertext_message** encrypted_message) {
+    assert(cipher);
+    assert(cipher_ctx);
+    assert(one_time_pad);
+    assert(plaintext);
+    assert(encrypted_message);
+
+    int result;
+
     signal_lock(cipher->global_context);
 
     if (cipher->inside_callback == 1) {
@@ -126,48 +159,106 @@ int session_cipher_stream_encrypt(session_cipher* cipher,
         goto complete;
     }
 
-    // Create the cipher context if necessary
-    if (*cipher_ctx == NULL) {
-        // Generate the keys and all that
-        result = signal_protocol_session_load_session(cipher->store, &record, cipher->remote_address);
-        if (result < 0) {
-            goto complete;
-        }
-
-        state = session_record_get_state(record);
-        if (!state) {
-            result = SG_ERR_UNKNOWN;
-            goto complete;
-        }
-
-        chain_key = session_state_get_sender_chain_key(state);
-        if(!chain_key) {
-            result = SG_ERR_UNKNOWN;
-            goto complete;
-        }
-
-        result = ratchet_chain_key_get_message_keys(chain_key, &message_keys);
-        if(result < 0) {
-            goto complete;
-        }
-
-        cipher_version = session_cipher_get_cipher_constant(session_state_get_session_version(state));
-
-        // This portion might be better placed in a separate function to allow for flexibility
-        result = signal_stream_encrypt_init(cipher->global_context,
-                cipher_ctx, cipher_version,
-                message_keys.cipher_key, sizeof(message_keys.cipher_key),
-                message_keys.iv, sizeof(message_keys.iv));
-        if (result < 0) {
-            goto complete;
-        }
+    session_record *record;
+    result = signal_protocol_session_load_session(cipher->store, &record, cipher->remote_address);
+    if(result < 0) {
+        goto complete;
     }
+
+    session_state *state = session_record_get_state(record);
+    if(!state) {
+        result = SG_ERR_UNKNOWN;
+        goto complete;
+    }
+
+    ratchet_chain_key *chain_key = session_state_get_sender_chain_key(state);
+    if(!chain_key) {
+        result = SG_ERR_UNKNOWN;
+        goto complete;
+    }
+
+    ratchet_message_keys message_keys;
+    result = ratchet_chain_key_get_message_keys(chain_key, &message_keys);
+    if(result < 0) {
+        goto complete;
+    }
+
+    ec_public_key *sender_ephemeral = session_state_get_sender_ratchet_key(state);
+    if(!sender_ephemeral) {
+        result = SG_ERR_UNKNOWN;
+        goto complete;
+    }
+
+    uint32_t previous_counter = session_state_get_previous_counter(state);
+    uint32_t session_version = session_state_get_session_version(state);
 
     // Apply the encryption
     // This portion might be better placed in a separate function to allow for flexibility
-    result = signal_stream_encrypt(cipher->global_context, one_time_pad, *cipher_ctx, plaintext, plaintext_len, ciphertext);
+    signal_buffer *ciphertext;
+    result = signal_stream_encrypt(cipher->global_context, one_time_pad, cipher_ctx, plaintext, plaintext_len, &ciphertext);
     if (result < 0) {
         goto complete;
+    }
+
+    uint8_t* ciphertext_data = signal_buffer_data(ciphertext);
+    size_t ciphertext_len = signal_buffer_len(ciphertext);
+
+    uint32_t chain_key_index = ratchet_chain_key_get_index(chain_key);
+
+    ec_public_key *local_identity_key = session_state_get_local_identity_key(state);
+    if(!local_identity_key) {
+        result = SG_ERR_UNKNOWN;
+        goto complete;
+    }
+
+    ec_public_key *remote_identity_key = session_state_get_remote_identity_key(state);
+    if(!remote_identity_key) {
+        result = SG_ERR_UNKNOWN;
+        goto complete;
+    }
+
+    signal_message *message;
+    result = signal_message_create(&message,
+            session_version,
+            message_keys.mac_key, sizeof(message_keys.mac_key),
+            sender_ephemeral,
+            chain_key_index, previous_counter,
+            ciphertext_data, ciphertext_len,
+            local_identity_key, remote_identity_key,
+            cipher->global_context);
+    if(result < 0) {
+        goto complete;
+    }
+
+    if(session_state_has_unacknowledged_pre_key_message(state) == 1) {
+        uint32_t local_registration_id = session_state_get_local_registration_id(state);
+        int has_pre_key_id = 0;
+        uint32_t pre_key_id = 0;
+        uint32_t signed_pre_key_id;
+        ec_public_key *base_key;
+        
+        if(session_state_unacknowledged_pre_key_message_has_pre_key_id(state)) {
+            has_pre_key_id = 1;
+            pre_key_id = session_state_unacknowledged_pre_key_message_get_pre_key_id(state);
+        }
+        signed_pre_key_id = session_state_unacknowledged_pre_key_message_get_signed_pre_key_id(state);
+        base_key = session_state_unacknowledged_pre_key_message_get_base_key(state);
+
+        if(!base_key) {
+            result = SG_ERR_UNKNOWN;
+            goto complete;
+        }
+
+        result = pre_key_signal_message_create(&pre_key_message,
+                session_version, local_registration_id, (has_pre_key_id ? &pre_key_id : 0),
+                signed_pre_key_id, base_key, local_identity_key,
+                message,
+                cipher->global_context);
+        if(result < 0) {
+            goto complete;
+        }
+        SIGNAL_UNREF(message);
+        message = 0;
     }
 
 complete:
@@ -177,8 +268,14 @@ complete:
 }
 
 int session_cipher_stream_encrypt_final(session_cipher* cipher,
-        void** cipher_ctx, signal_buffer** one_time_pad,
+        void* cipher_ctx, signal_buffer** one_time_pad,
         const uint8_t* plaintext, size_t plaintext_len, ciphertext_message** encrypted_message) {
+    assert(cipher);
+    assert(cipher_ctx);
+    assert(one_time_pad);
+    assert(plaintext);
+    assert(encrypted_message);
+
     int result;
     session_record *record = 0;
     session_state *state = 0;
@@ -188,7 +285,6 @@ int session_cipher_stream_encrypt_final(session_cipher* cipher,
     ec_public_key *sender_ephemeral = 0;
     uint32_t previous_counter = 0;
     uint32_t session_version = 0;
-    int cipher_version = 0;
     signal_buffer *ciphertext = 0;
     uint32_t chain_key_index = 0;
     ec_public_key *local_identity_key = 0;
@@ -198,7 +294,6 @@ int session_cipher_stream_encrypt_final(session_cipher* cipher,
     uint8_t *ciphertext_data = 0;
     size_t ciphertext_len = 0;
 
-    assert(cipher);
     signal_lock(cipher->global_context);
 
     if (cipher->inside_callback == 1) {
@@ -236,28 +331,15 @@ int session_cipher_stream_encrypt_final(session_cipher* cipher,
 
     previous_counter = session_state_get_previous_counter(state);
     session_version = session_state_get_session_version(state);
-    cipher_version = session_cipher_get_cipher_constant(session_version);
-
-    // Create the cipher context if necessary
-    if (*cipher_ctx == NULL) {
-        // This portion might be better placed in separate function to allow for flexibility
-        result = signal_stream_encrypt_init(cipher->global_context,
-                cipher_ctx, cipher_version,
-                message_keys.cipher_key, sizeof(message_keys.cipher_key),
-                message_keys.iv, sizeof(message_keys.iv));
-        if (result < 0) {
-            goto complete;
-        }
-    }
 
     // Apply the encryption
-    result = signal_stream_encrypt(cipher->global_context, one_time_pad, *cipher_ctx, plaintext, plaintext_len, &ciphertext);
+    result = signal_stream_encrypt(cipher->global_context, one_time_pad, cipher_ctx, plaintext, plaintext_len, &ciphertext);
     if (result < 0) {
         goto complete;
     }
 
     // Finalize this encryption session
-    result = signal_stream_encrypt_final(cipher->global_context, one_time_pad, *cipher_ctx);
+    result = signal_stream_encrypt_final(cipher->global_context, one_time_pad, cipher_ctx);
     if (result < 0) {
         goto complete;
     }

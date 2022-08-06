@@ -129,4 +129,4 @@ void sender_key_distribution_message_destroy(signal_type_base *type);
 }
 #endif
 
-#endif /* PROTOCOL_H */
+#endif  // LIBSIGNAL_PROTOCOL_C_SRC_PROTOCOL_H
