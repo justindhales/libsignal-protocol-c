@@ -77,11 +77,10 @@ int session_cipher_stream_encrypt_init(session_cipher *cipher, void **cipher_ctx
 
 int session_cipher_stream_encrypt(session_cipher* cipher,
         void* cipher_ctx, signal_buffer** one_time_pad,
-        const uint8_t* plaintext, size_t plaintext_len, signal_buffer** ciphertext);
+        const uint8_t* plaintext, size_t plaintext_len, ciphertext_message** encrypted_message);
 
 int session_cipher_stream_encrypt_final(session_cipher* cipher,
-        void* cipher_ctx, signal_buffer** one_time_pad,
-        const uint8_t* plaintext, size_t plaintext_len, ciphertext_message** encrypted_message);
+        void* cipher_ctx, signal_buffer** one_time_pad);
 
 /**
  * Encrypt a message.
@@ -116,6 +115,10 @@ int session_cipher_encrypt(session_cipher *cipher,
  */
 int session_cipher_decrypt_pre_key_signal_message(session_cipher *cipher,
         pre_key_signal_message *ciphertext, void *decrypt_context,
+        signal_buffer **plaintext);
+
+int session_cipher_stream_decrypt_signal_message(session_cipher *cipher,
+        signal_message *ciphertext, void *decrypt_context,
         signal_buffer **plaintext);
 
 /**

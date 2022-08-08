@@ -584,6 +584,20 @@ int signal_stream_encrypt_final(signal_context* context,
             context->crypto_provider.user_data);
 }
 
+int signal_stream_decrypt(signal_context* context,
+        int cipher,
+        const uint8_t *key, size_t key_len,
+        const uint8_t *iv, size_t iv_len,
+        const uint8_t *ciphertext, size_t ciphertext_len,
+        signal_buffer **plaintext)
+{
+    assert(context);
+    assert(context->crypto_provider.stream_decrypt_func);
+    return context->crypto_provider.stream_decrypt_func(
+        cipher, key, key_len, iv, iv_len, ciphertext, ciphertext_len, plaintext,
+        context->user_data);
+}
+
 void signal_lock(signal_context *context)
 {
     if(context->lock) {

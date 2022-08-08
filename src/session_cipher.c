@@ -21,8 +21,12 @@ struct session_cipher
     void *user_data;
 };
 
+static int session_cipher_stream_decrypt_from_record_and_signal_message(session_cipher *cipher,
+        session_record *record, signal_message *ciphertext, signal_buffer **plaintext);
 static int session_cipher_decrypt_from_record_and_signal_message(session_cipher *cipher,
         session_record *record, signal_message *ciphertext, signal_buffer **plaintext);
+static int session_cipher_stream_decrypt_from_state_and_signal_message(session_cipher *cipher,
+        session_state *state, signal_message *ciphertext, signal_buffer **plaintext);
 static int session_cipher_decrypt_from_state_and_signal_message(session_cipher *cipher,
         session_state *state, signal_message *ciphertext, signal_buffer **plaintext);
 
@@ -129,7 +133,6 @@ int session_cipher_stream_encrypt_init(session_cipher *cipher, void **cipher_ctx
 
     int cipher_version = session_cipher_get_cipher_constant(session_state_get_session_version(state));
 
-    // This portion might be better placed in a separate function to allow for flexibility
     result = signal_stream_encrypt_init(cipher->global_context,
             cipher_ctx, cipher_version,
             message_keys.cipher_key, sizeof(message_keys.cipher_key),
@@ -230,6 +233,7 @@ int session_cipher_stream_encrypt(session_cipher* cipher,
         goto complete;
     }
 
+    pre_key_signal_message *pre_key_message = NULL;
     if(session_state_has_unacknowledged_pre_key_message(state) == 1) {
         uint32_t local_registration_id = session_state_get_local_registration_id(state);
         int has_pre_key_id = 0;
@@ -262,148 +266,63 @@ int session_cipher_stream_encrypt(session_cipher* cipher,
     }
 
 complete:
+    if(result >= 0) {
+        if (pre_key_message) {
+            *encrypted_message = (ciphertext_message *)pre_key_message;
+        }
+        else {
+            *encrypted_message = (ciphertext_message *)message;
+        }
+    }
+    else {
+        SIGNAL_UNREF(pre_key_message);
+        SIGNAL_UNREF(message);
+    }
+    signal_buffer_free(ciphertext);
+    SIGNAL_UNREF(record);
+
     signal_unlock(cipher->global_context);
 
     return result;
 }
 
 int session_cipher_stream_encrypt_final(session_cipher* cipher,
-        void* cipher_ctx, signal_buffer** one_time_pad,
-        const uint8_t* plaintext, size_t plaintext_len, ciphertext_message** encrypted_message) {
+        void* cipher_ctx, signal_buffer** one_time_pad) {
     assert(cipher);
     assert(cipher_ctx);
     assert(one_time_pad);
-    assert(plaintext);
-    assert(encrypted_message);
 
     int result;
-    session_record *record = 0;
-    session_state *state = 0;
-    ratchet_chain_key *chain_key = 0;
-    ratchet_chain_key *next_chain_key = 0;
-    ratchet_message_keys message_keys;
-    ec_public_key *sender_ephemeral = 0;
-    uint32_t previous_counter = 0;
-    uint32_t session_version = 0;
-    signal_buffer *ciphertext = 0;
-    uint32_t chain_key_index = 0;
-    ec_public_key *local_identity_key = 0;
-    ec_public_key *remote_identity_key = 0;
-    signal_message *message = 0;
-    pre_key_signal_message *pre_key_message = 0;
-    uint8_t *ciphertext_data = 0;
-    size_t ciphertext_len = 0;
 
     signal_lock(cipher->global_context);
 
-    if (cipher->inside_callback == 1) {
-        result = SG_ERR_INVAL;
-        goto complete;
-    }
+    signal_stream_encrypt_final(cipher->global_context, one_time_pad, cipher_ctx);
 
+    session_record *record;
     result = signal_protocol_session_load_session(cipher->store, &record, cipher->remote_address);
-    if (result < 0) {
+    if(result < 0) {
         goto complete;
     }
 
-    state = session_record_get_state(record);
-    if (!state) {
+    session_state *state = session_record_get_state(record);
+    if(!state) {
         result = SG_ERR_UNKNOWN;
         goto complete;
     }
 
-    chain_key = session_state_get_sender_chain_key(state);
+    ratchet_chain_key *chain_key = session_state_get_sender_chain_key(state);
     if(!chain_key) {
         result = SG_ERR_UNKNOWN;
         goto complete;
     }
 
+    ratchet_message_keys message_keys;
     result = ratchet_chain_key_get_message_keys(chain_key, &message_keys);
     if(result < 0) {
         goto complete;
     }
 
-    sender_ephemeral = session_state_get_sender_ratchet_key(state);
-    if(!sender_ephemeral) {
-        result = SG_ERR_UNKNOWN;
-        goto complete;
-    }
-
-    previous_counter = session_state_get_previous_counter(state);
-    session_version = session_state_get_session_version(state);
-
-    // Apply the encryption
-    result = signal_stream_encrypt(cipher->global_context, one_time_pad, cipher_ctx, plaintext, plaintext_len, &ciphertext);
-    if (result < 0) {
-        goto complete;
-    }
-
-    // Finalize this encryption session
-    result = signal_stream_encrypt_final(cipher->global_context, one_time_pad, cipher_ctx);
-    if (result < 0) {
-        goto complete;
-    }
-
-    ciphertext_data = signal_buffer_data(ciphertext);
-    ciphertext_len = signal_buffer_len(ciphertext);
-
-    chain_key_index = ratchet_chain_key_get_index(chain_key);
-
-    local_identity_key = session_state_get_local_identity_key(state);
-    if(!local_identity_key) {
-        result = SG_ERR_UNKNOWN;
-        goto complete;
-    }
-
-    remote_identity_key = session_state_get_remote_identity_key(state);
-    if(!remote_identity_key) {
-        result = SG_ERR_UNKNOWN;
-        goto complete;
-    }
-
-    result = signal_message_create(&message,
-            session_version,
-            message_keys.mac_key, sizeof(message_keys.mac_key),
-            sender_ephemeral,
-            chain_key_index, previous_counter,
-            ciphertext_data, ciphertext_len,
-            local_identity_key, remote_identity_key,
-            cipher->global_context);
-    if(result < 0) {
-        goto complete;
-    }
-
-    if(session_state_has_unacknowledged_pre_key_message(state) == 1) {
-        uint32_t local_registration_id = session_state_get_local_registration_id(state);
-        int has_pre_key_id = 0;
-        uint32_t pre_key_id = 0;
-        uint32_t signed_pre_key_id;
-        ec_public_key *base_key;
-        
-        if(session_state_unacknowledged_pre_key_message_has_pre_key_id(state)) {
-            has_pre_key_id = 1;
-            pre_key_id = session_state_unacknowledged_pre_key_message_get_pre_key_id(state);
-        }
-        signed_pre_key_id = session_state_unacknowledged_pre_key_message_get_signed_pre_key_id(state);
-        base_key = session_state_unacknowledged_pre_key_message_get_base_key(state);
-
-        if(!base_key) {
-            result = SG_ERR_UNKNOWN;
-            goto complete;
-        }
-
-        result = pre_key_signal_message_create(&pre_key_message,
-                session_version, local_registration_id, (has_pre_key_id ? &pre_key_id : 0),
-                signed_pre_key_id, base_key, local_identity_key,
-                message,
-                cipher->global_context);
-        if(result < 0) {
-            goto complete;
-        }
-        SIGNAL_UNREF(message);
-        message = 0;
-    }
-
+    ratchet_chain_key *next_chain_key;
     result = ratchet_chain_key_create_next(chain_key, &next_chain_key);
     if(result < 0) {
         goto complete;
@@ -417,23 +336,11 @@ int session_cipher_stream_encrypt_final(session_cipher* cipher,
     result = signal_protocol_session_store_session(cipher->store, cipher->remote_address, record);
 
 complete:
-    if(result >= 0) {
-        if(pre_key_message) {
-            *encrypted_message = (ciphertext_message *)pre_key_message;
-        }
-        else {
-            *encrypted_message = (ciphertext_message *)message;
-        }
-    }
-    else {
-        SIGNAL_UNREF(pre_key_message);
-        SIGNAL_UNREF(message);
-    }
-    signal_buffer_free(ciphertext);
     SIGNAL_UNREF(next_chain_key);
     SIGNAL_UNREF(record);
     signal_explicit_bzero(&message_keys, sizeof(ratchet_message_keys));
     signal_unlock(cipher->global_context);
+
     return result;
 }
 
@@ -663,6 +570,62 @@ complete:
     return result;
 }
 
+int session_cipher_stream_decrypt_signal_message(session_cipher *cipher, signal_message *ciphertext, void *decrypt_context, signal_buffer **plaintext)
+{
+    int result = 0;
+    signal_buffer *result_buf = 0;
+    session_record *record = 0;
+
+    assert(cipher);
+    signal_lock(cipher->global_context);
+
+    if(cipher->inside_callback == 1) {
+        result = SG_ERR_INVAL;
+        goto complete;
+    }
+
+    result = signal_protocol_session_contains_session(cipher->store, cipher->remote_address);
+    if(result == 0) {
+        signal_log(cipher->global_context, SG_LOG_WARNING, "No session for: %s:%d", cipher->remote_address->name, cipher->remote_address->device_id);
+        result = SG_ERR_NO_SESSION;
+        goto complete;
+    }
+    else if(result < 0) {
+        goto complete;
+    }
+
+    result = signal_protocol_session_load_session(cipher->store, &record,
+            cipher->remote_address);
+    if(result < 0) {
+        goto complete;
+    }
+
+    result = session_cipher_stream_decrypt_from_record_and_signal_message(
+            cipher, record, ciphertext, &result_buf);
+    if(result < 0) {
+        goto complete;
+    }
+
+    result = session_cipher_decrypt_callback(cipher, result_buf, decrypt_context);
+    if(result < 0) {
+        goto complete;
+    }
+
+    result = signal_protocol_session_store_session(cipher->store,
+            cipher->remote_address, record);
+
+complete:
+    SIGNAL_UNREF(record);
+    if(result >= 0) {
+        *plaintext = result_buf;
+    }
+    else {
+        signal_buffer_free(result_buf);
+    }
+    signal_unlock(cipher->global_context);
+    return result;
+}
+
 int session_cipher_decrypt_signal_message(session_cipher *cipher,
         signal_message *ciphertext, void *decrypt_context,
         signal_buffer **plaintext)
@@ -711,6 +674,78 @@ int session_cipher_decrypt_signal_message(session_cipher *cipher,
 
 complete:
     SIGNAL_UNREF(record);
+    if(result >= 0) {
+        *plaintext = result_buf;
+    }
+    else {
+        signal_buffer_free(result_buf);
+    }
+    signal_unlock(cipher->global_context);
+    return result;
+}
+
+static int session_cipher_stream_decrypt_from_record_and_signal_message(session_cipher *cipher,
+        session_record *record, signal_message *ciphertext, signal_buffer **plaintext)
+{
+    int result = 0;
+    signal_buffer *result_buf = 0;
+    session_state *state = 0;
+    session_state *state_copy = 0;
+    session_record_state_node *previous_states_node = 0;
+
+    assert(cipher);
+    signal_lock(cipher->global_context);
+
+    state = session_record_get_state(record);
+    if(state) {
+        result = session_state_copy(&state_copy, state, cipher->global_context);
+        if(result < 0) {
+            goto complete;
+        }
+
+        //TODO Collect and log invalid message errors if totally unsuccessful
+
+        result = session_cipher_stream_decrypt_from_state_and_signal_message(cipher, state_copy, ciphertext, &result_buf);
+        if(result < 0 && result != SG_ERR_INVALID_MESSAGE) {
+            goto complete;
+        }
+
+        if(result >= SG_SUCCESS) {
+            session_record_set_state(record, state_copy);
+            goto complete;
+        }
+        SIGNAL_UNREF(state_copy);
+    }
+
+    previous_states_node = session_record_get_previous_states_head(record);
+    while(previous_states_node) {
+        state = session_record_get_previous_states_element(previous_states_node);
+
+        result = session_state_copy(&state_copy, state, cipher->global_context);
+        if(result < 0) {
+            goto complete;
+        }
+
+        result = session_cipher_decrypt_from_state_and_signal_message(cipher, state_copy, ciphertext, &result_buf);
+        if(result < 0 && result != SG_ERR_INVALID_MESSAGE) {
+            goto complete;
+        }
+
+        if(result >= SG_SUCCESS) {
+            session_record_get_previous_states_remove(record, previous_states_node);
+            result = session_record_promote_state(record, state_copy);
+            goto complete;
+        }
+
+        SIGNAL_UNREF(state_copy);
+        previous_states_node = session_record_get_previous_states_next(previous_states_node);
+    }
+
+    signal_log(cipher->global_context, SG_LOG_WARNING, "No valid sessions");
+    result = SG_ERR_INVALID_MESSAGE;
+
+complete:
+    SIGNAL_UNREF(state_copy);
     if(result >= 0) {
         *plaintext = result_buf;
     }
@@ -790,6 +825,118 @@ complete:
         signal_buffer_free(result_buf);
     }
     signal_unlock(cipher->global_context);
+    return result;
+}
+
+static int session_cipher_stream_decrypt_from_state_and_signal_message(session_cipher *cipher,
+        session_state *state, signal_message *ciphertext, signal_buffer **plaintext)
+{
+    int result = 0;
+    signal_buffer *result_buf = 0;
+    ec_public_key *their_ephemeral = 0;
+    uint32_t counter = 0;
+    ratchet_chain_key *chain_key = 0;
+    ratchet_message_keys message_keys;
+    uint8_t message_version = 0;
+    uint32_t session_version = 0;
+    ec_public_key *remote_identity_key = 0;
+    ec_public_key *local_identity_key = 0;
+    signal_buffer *ciphertext_body = 0;
+
+    if(!session_state_has_sender_chain(state)) {
+        signal_log(cipher->global_context, SG_LOG_WARNING, "Uninitialized session!");
+        result = SG_ERR_INVALID_MESSAGE;
+        goto complete;
+    }
+
+    message_version = signal_message_get_message_version(ciphertext);
+    session_version = session_state_get_session_version(state);
+
+    if(message_version != session_version) {
+        signal_log(cipher->global_context, SG_LOG_WARNING, "Message version %d, but session version %d", message_version, session_version);
+        result = SG_ERR_INVALID_MESSAGE;
+        goto complete;
+    }
+
+    their_ephemeral = signal_message_get_sender_ratchet_key(ciphertext);
+    if(!their_ephemeral) {
+        result = SG_ERR_UNKNOWN;
+        goto complete;
+    }
+
+    counter = signal_message_get_counter(ciphertext);
+
+    result = session_cipher_get_or_create_chain_key(cipher, &chain_key, state, their_ephemeral);
+    if(result < 0) {
+        goto complete;
+    }
+
+    result = session_cipher_get_or_create_message_keys(&message_keys, state,
+            their_ephemeral, chain_key, counter, cipher->global_context);
+    if(result < 0) {
+        goto complete;
+    }
+
+    remote_identity_key = session_state_get_remote_identity_key(state);
+    if(!remote_identity_key) {
+        result = SG_ERR_UNKNOWN;
+        goto complete;
+    }
+
+    local_identity_key = session_state_get_local_identity_key(state);
+    if(!local_identity_key) {
+        result = SG_ERR_UNKNOWN;
+        goto complete;
+    }
+
+    result = signal_message_verify_mac(ciphertext,
+            remote_identity_key, local_identity_key,
+            message_keys.mac_key, sizeof(message_keys.mac_key),
+            cipher->global_context);
+    if(result != 1) {
+        if(result == 0) {
+            signal_log(cipher->global_context, SG_LOG_WARNING, "Message mac not verified");
+            result = SG_ERR_INVALID_MESSAGE;
+        }
+        else if(result < 0) {
+            signal_log(cipher->global_context, SG_LOG_WARNING, "Error attempting to verify message mac");
+        }
+        goto complete;
+    }
+
+    ciphertext_body = signal_message_get_body(ciphertext);
+    if(!ciphertext_body) {
+        signal_log(cipher->global_context, SG_LOG_WARNING, "Message body does not exist");
+        result = SG_ERR_INVALID_MESSAGE;
+        goto complete;
+    }
+
+    int cipher_version = session_cipher_get_cipher_constant(session_state_get_session_version(state));
+
+    result = signal_stream_decrypt(cipher->global_context,
+            cipher_version,
+            message_keys.cipher_key, sizeof(message_keys.cipher_key),
+            message_keys.iv, sizeof(message_keys.iv),
+            signal_buffer_data(ciphertext_body), signal_buffer_len(ciphertext_body),
+            &result_buf);
+
+    // result = session_cipher_get_plaintext(cipher, &result_buf, message_version, &message_keys,
+    //         signal_buffer_data(ciphertext_body), signal_buffer_len(ciphertext_body));
+    if(result < 0) {
+        goto complete;
+    }
+
+    session_state_clear_unacknowledged_pre_key_message(state);
+
+complete:
+    SIGNAL_UNREF(chain_key);
+    if(result >= 0) {
+        *plaintext = result_buf;
+    }
+    else {
+        signal_buffer_free(result_buf);
+    }
+    signal_explicit_bzero(&message_keys, sizeof(ratchet_message_keys));
     return result;
 }
 

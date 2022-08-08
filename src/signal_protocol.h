@@ -427,6 +427,12 @@ typedef struct signal_crypto_provider {
             void* cipher_ctx,
             void* user_data);
 
+    int (*stream_decrypt_func)(int cipher,
+            const uint8_t *key, size_t key_len,
+            const uint8_t *iv, size_t iv_len,
+            const uint8_t *ciphertext, size_t ciphertext_len,
+            signal_buffer **plaintext, void *user_data);
+
     /** User data pointer */
     void *user_data;
 } signal_crypto_provider;
