@@ -561,10 +561,10 @@ int signal_stream_encrypt_init(signal_context* context,
 }
 
 int signal_stream_encrypt(signal_context* context,
-        signal_buffer** one_time_pad,
-        void* cipher_ctx,
-        const uint8_t* plaintext, size_t plaintext_len,
-        signal_buffer** ciphertext)
+        signal_buffer **one_time_pad,
+        void * cipher_ctx,
+        const uint8_t *plaintext, size_t plaintext_len,
+        signal_buffer **ciphertext)
 {
     assert(context);
     assert(context->crypto_provider.stream_encrypt_func);
@@ -574,8 +574,8 @@ int signal_stream_encrypt(signal_context* context,
 }
 
 int signal_stream_encrypt_final(signal_context* context,
-        signal_buffer** one_time_pad,
-        void* cipher_ctx)
+        signal_buffer **one_time_pad,
+        void **cipher_ctx)
 {
     assert(context);
     assert(context->crypto_provider.stream_encrypt_final_func);

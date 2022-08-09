@@ -80,7 +80,7 @@ int session_cipher_stream_encrypt(session_cipher* cipher,
         const uint8_t* plaintext, size_t plaintext_len, ciphertext_message** encrypted_message);
 
 int session_cipher_stream_encrypt_final(session_cipher* cipher,
-        void* cipher_ctx, signal_buffer** one_time_pad);
+        void** cipher_ctx, signal_buffer** one_time_pad);
 
 /**
  * Encrypt a message.

@@ -424,7 +424,7 @@ typedef struct signal_crypto_provider {
             void *user_data);
 
     int (*stream_encrypt_final_func)(signal_buffer** one_time_pad,
-            void* cipher_ctx,
+            void** cipher_ctx,
             void* user_data);
 
     int (*stream_decrypt_func)(int cipher,

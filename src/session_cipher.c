@@ -287,10 +287,11 @@ complete:
 }
 
 int session_cipher_stream_encrypt_final(session_cipher* cipher,
-        void* cipher_ctx, signal_buffer** one_time_pad) {
-    assert(cipher);
-    assert(cipher_ctx);
-    assert(one_time_pad);
+        void** cipher_ctx, signal_buffer** one_time_pad) {
+    assert(cipher != NULL);
+    assert(cipher_ctx != NULL);
+    assert(*cipher_ctx != NULL);
+    assert(one_time_pad != NULL);
 
     int result;
 
