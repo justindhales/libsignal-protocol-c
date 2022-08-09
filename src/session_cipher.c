@@ -572,11 +572,14 @@ complete:
 
 int session_cipher_stream_decrypt_signal_message(session_cipher *cipher, signal_message *ciphertext, void *decrypt_context, signal_buffer **plaintext)
 {
+    assert(cipher != NULL);
+    assert(ciphertext != NULL);
+    assert(plaintext != NULL);
+
     int result = 0;
     signal_buffer *result_buf = 0;
     session_record *record = 0;
 
-    assert(cipher);
     signal_lock(cipher->global_context);
 
     if(cipher->inside_callback == 1) {
