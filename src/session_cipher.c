@@ -147,11 +147,11 @@ complete:
 int session_cipher_stream_encrypt(session_cipher* cipher,
         void* cipher_ctx, signal_buffer** one_time_pad,
         const uint8_t* plaintext, size_t plaintext_len, ciphertext_message** encrypted_message) {
-    assert(cipher);
-    assert(cipher_ctx);
-    assert(one_time_pad);
-    assert(plaintext);
-    assert(encrypted_message);
+    assert(cipher != NULL);
+    assert(cipher_ctx != NULL);
+    assert(one_time_pad != NULL);
+    assert(plaintext != NULL);
+    assert(encrypted_message != NULL);
 
     int result;
 
@@ -162,7 +162,7 @@ int session_cipher_stream_encrypt(session_cipher* cipher,
         goto complete;
     }
 
-    session_record *record;
+    session_record *record = NULL;
     result = signal_protocol_session_load_session(cipher->store, &record, cipher->remote_address);
     if(result < 0) {
         goto complete;
@@ -197,7 +197,7 @@ int session_cipher_stream_encrypt(session_cipher* cipher,
 
     // Apply the encryption
     // This portion might be better placed in a separate function to allow for flexibility
-    signal_buffer *ciphertext;
+    signal_buffer *ciphertext = NULL; // Very important to set this to NULL due to checks within implementation
     result = signal_stream_encrypt(cipher->global_context, one_time_pad, cipher_ctx, plaintext, plaintext_len, &ciphertext);
     if (result < 0) {
         goto complete;
