@@ -12,8 +12,8 @@
 #  BSD license.
 #  For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 
-
-INCLUDE( FindPkgConfig )
+# Justin Hales's modification
+find_package(PkgConfig REQUIRED)
 
 IF ( Check_FIND_REQUIRED )
 	SET( _pkgconfig_REQUIRED "REQUIRED" )
@@ -52,4 +52,3 @@ ENDIF( NOT CHECK_FOUND AND NOT PKG_CONFIG_FOUND )
 
 # Hide advanced variables from CMake GUIs
 MARK_AS_ADVANCED( CHECK_INCLUDE_DIRS CHECK_LIBRARIES )
-
