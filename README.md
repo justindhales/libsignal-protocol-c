@@ -32,7 +32,7 @@ Items marked with *1 are required for tests, with *2 are additionally required f
 ### Running the unit tests
 
     $ cd /path/to/libsignal-protocol-c/build
-    $ cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 ..
+    $ cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=1 ..
     $ cd tests
     $ make
     $ cd ..
@@ -41,7 +41,7 @@ Items marked with *1 are required for tests, with *2 are additionally required f
 ### Creating the code coverage report
 
     $ cd /path/to/libsignal-protocol-c/build
-    $ cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=1 -DCOVERAGE=1 ..
+    $ cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=1 -DCOVERAGE=1 ..
     $ make coverage
 
 The generated code coverage report can be found in:
@@ -212,4 +212,3 @@ Copyright 2015-2016 Open Whisper Systems
 Licensed under the GPLv3: http://www.gnu.org/licenses/gpl-3.0.html
 
 Additional Permissions For Submission to Apple App Store: Provided that you are otherwise in compliance with the GPLv3 for each covered work you convey (including without limitation making the Corresponding Source available in compliance with Section 6 of the GPLv3), Open Whisper Systems also grants you the additional permission to convey through the Apple App Store non-source executable versions of the Program as incorporated into each applicable covered work as Executable Versions only under the Mozilla Public License version 2.0 (https://www.mozilla.org/en-US/MPL/2.0/).
-

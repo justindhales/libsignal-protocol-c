@@ -90,6 +90,6 @@ endif(COVERAGE)
 
 add_subdirectory(src)
 
-if(BUILD_TESTING)
+if(BUILD_TESTS)
   add_subdirectory(tests)
-endif(BUILD_TESTING)
+endif(BUILD_TESTS)
