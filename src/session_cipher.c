@@ -382,12 +382,14 @@ int session_cipher_encrypt(session_cipher *cipher,
 
     state = session_record_get_state(record);
     if(!state) {
+        fprintf(stderr, "session_record_get_state\n");
         result = SG_ERR_UNKNOWN;
         goto complete;
     }
 
     chain_key = session_state_get_sender_chain_key(state);
     if(!chain_key) {
+        fprintf(stderr, "session_state_get_sender_chain_key\n");
         result = SG_ERR_UNKNOWN;
         goto complete;
     }
@@ -420,12 +422,14 @@ int session_cipher_encrypt(session_cipher *cipher,
 
     local_identity_key = session_state_get_local_identity_key(state);
     if(!local_identity_key) {
+        fprintf(stderr, "session_state_get_local_identity_key\n");
         result = SG_ERR_UNKNOWN;
         goto complete;
     }
 
     remote_identity_key = session_state_get_remote_identity_key(state);
     if(!remote_identity_key) {
+        fprintf(stderr, "session_state_get_remote_identity_key\n");
         result = SG_ERR_UNKNOWN;
         goto complete;
     }
@@ -457,6 +461,7 @@ int session_cipher_encrypt(session_cipher *cipher,
         base_key = session_state_unacknowledged_pre_key_message_get_base_key(state);
 
         if(!base_key) {
+            printf("session_state_unacknowledged_pre_key_message_get_base_key\n");
             result = SG_ERR_UNKNOWN;
             goto complete;
         }
