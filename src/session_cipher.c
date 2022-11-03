@@ -461,7 +461,7 @@ int session_cipher_encrypt(session_cipher *cipher,
         base_key = session_state_unacknowledged_pre_key_message_get_base_key(state);
 
         if(!base_key) {
-            printf("session_state_unacknowledged_pre_key_message_get_base_key\n");
+            fprintf(stderr, "session_state_unacknowledged_pre_key_message_get_base_key\n");
             result = SG_ERR_UNKNOWN;
             goto complete;
         }
